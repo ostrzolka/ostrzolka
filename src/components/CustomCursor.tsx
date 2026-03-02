@@ -52,13 +52,13 @@ export default function CustomCursor({ className }: { className?: string }) {
 
             ctx.beginPath();
             ctx.arc(state.x, state.y, 8, 0, Math.PI * 2);
-            ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
+            ctx.fillStyle = "#ffffff";
             ctx.fill();
 
             // Outer ring
             ctx.beginPath();
             ctx.arc(state.x, state.y, 24, 0, Math.PI * 2);
-            ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.4)";
             ctx.lineWidth = 1;
             ctx.stroke();
 
@@ -77,7 +77,7 @@ export default function CustomCursor({ className }: { className?: string }) {
     return (
         <canvas
             ref={canvasRef}
-            className={cn("fixed inset-0 pointer-events-none z-[9999]", className)}
+            className={cn("fixed inset-0 pointer-events-none z-[9999] mix-blend-difference", className)}
         />
     );
 }

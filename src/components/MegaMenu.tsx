@@ -17,6 +17,29 @@ const MENU_ITEMS = [
     { title: "O nas", href: "/about", image: "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=1000&auto=format&fit=crop" },
 ];
 
+const SlotText = ({ text }: { text: string }) => {
+    return (
+        <span className="flex">
+            {text.split("").map((char, index) => (
+                <span
+                    key={index}
+                    className="relative overflow-hidden inline-flex"
+                >
+                    <span
+                        className="flex flex-col transition-transform duration-500 ease-[cubic-bezier(0.76,0,0.24,1)] group-hover:-translate-y-1/2"
+                        style={{ transitionDelay: `${index * 30}ms` }}
+                    >
+                        {/* Front face letter */}
+                        <span>{char === " " ? "\u00A0" : char}</span>
+                        {/* Hover reveal letter (the "next" slot) */}
+                        <span className="text-neutral-400 absolute top-full left-0">{char === " " ? "\u00A0" : char}</span>
+                    </span>
+                </span>
+            ))}
+        </span>
+    );
+};
+
 export default function MegaMenu({ isOpen, setIsOpen }: MegaMenuProps) {
     const containerRef = useRef<HTMLDivElement>(null);
     const [hoveredIndex, setHoveredIndex] = useState<number>(0);
@@ -92,11 +115,11 @@ export default function MegaMenu({ isOpen, setIsOpen }: MegaMenuProps) {
                             <div className="mega-menu-link-wrapper">
                                 <Link
                                     href={item.href}
-                                    className="font-serif text-5xl md:text-7xl lg:text-8xl tracking-tight leading-none hover:text-neutral-400 transition-colors inline-block"
+                                    className="font-serif text-5xl md:text-7xl lg:text-8xl tracking-tight leading-none inline-block group"
                                     onClick={() => setIsOpen(false)}
                                     onMouseEnter={() => setHoveredIndex(i)}
                                 >
-                                    {item.title}
+                                    <SlotText text={item.title} />
                                 </Link>
                             </div>
                         </div>
