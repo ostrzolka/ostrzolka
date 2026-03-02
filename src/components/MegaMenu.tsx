@@ -14,7 +14,7 @@ interface MegaMenuProps {
 const MENU_ITEMS = [
     { title: "Nasz Cel", href: "/#mission", image: "https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=2000&auto=format&fit=crop" },
     { title: "Archiwum", href: "/explore", image: "https://images.unsplash.com/photo-1444858345149-8ff40887589b?q=80&w=1000&auto=format&fit=crop" },
-    { title: "O nas", href: "/#about", image: "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=1000&auto=format&fit=crop" },
+    { title: "O nas", href: "/about", image: "https://images.unsplash.com/photo-1586075010923-2dd4570fb338?q=80&w=1000&auto=format&fit=crop" },
     { title: "Kontakt", href: "/#kontakt", image: "https://images.unsplash.com/photo-1518005020951-eccb494ad742?q=80&w=1000&auto=format&fit=crop" },
 ];
 

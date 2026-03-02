@@ -21,6 +21,8 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
             touchMultiplier: 1.0,
         });
 
+        lenis.on('scroll', ScrollTrigger.update);
+
         gsap.ticker.add((time) => {
             lenis.raf(time * 1000);
         });
