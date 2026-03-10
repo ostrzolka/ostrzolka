@@ -52,6 +52,7 @@ export function buildAddressLabel(address: any): string {
     const street = address.street;
     if (street) {
         if (street.teryt_cecha) parts.push(street.teryt_cecha);
+        if (street.teryt_nazwa_2) parts.push(street.teryt_nazwa_2);
         if (street.teryt_nazwa_1) parts.push(street.teryt_nazwa_1);
     }
     if (address.house_number) parts.push(String(address.house_number));
@@ -119,7 +120,7 @@ export async function getAddresses(): Promise<AddressCard[]> {
             construction_end,
             longitude,
             latitude,
-            street!address_street_id_fkey ( teryt_cecha, teryt_nazwa_1 ),
+            street!address_street_id_fkey ( teryt_cecha, teryt_nazwa_2, teryt_nazwa_1 ),
             entry_address ( entry ( topics, _processing_status ) )
         `);
 
@@ -155,7 +156,7 @@ export async function getAddressById(id: string): Promise<AddressDetail | null> 
             building_type,
             longitude,
             latitude,
-            street!address_street_id_fkey ( teryt_cecha, teryt_nazwa_1 ),
+            street!address_street_id_fkey ( teryt_cecha, teryt_nazwa_2, teryt_nazwa_1 ),
             entry_address (
                 entry (
                     id, description, topics, scope, _processing_status,
