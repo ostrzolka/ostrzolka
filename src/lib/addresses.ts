@@ -10,7 +10,6 @@ export interface AddressCard {
     year: string | null;
     longitude: number | null;
     latitude: number | null;
-    tags: string[];
 }
 
 export interface BibEntry {
@@ -86,21 +85,37 @@ function flattenBibliography(entryAddress: any[]): BibEntry[] {
         const entry = ea.entry;
         if (!entry || entry._processing_status !== "processed") continue;
 
-        for (const es of entry.entry_source ?? []) {
-            const src = es.source;
-            if (!src) continue;
+        const sources: any[] = entry.entry_source ?? [];
+
+        if (sources.length === 0) {
             results.push({
-                sourceId: String(src.id),
-                title: src.title ?? null,
-                year: src.year ? String(src.year) : null,
-                authors: src.authors ?? null,
-                publisher: src.publisher ?? null,
-                sourceDescription: src.description ?? null,
+                sourceId: "",
+                title: null,
+                year: null,
+                authors: null,
+                publisher: null,
+                sourceDescription: null,
                 entryId: String(entry.id),
                 entryDescription: entry.description ?? null,
                 entryScope: entry.scope ?? null,
                 topics: Array.isArray(entry.topics) ? entry.topics : null,
             });
+        } else {
+            for (const es of sources) {
+                const src = es.source;
+                results.push({
+                    sourceId: src ? String(src.id) : "",
+                    title: src?.title ?? null,
+                    year: src?.year ? String(src.year) : null,
+                    authors: src?.authors ?? null,
+                    publisher: src?.publisher ?? null,
+                    sourceDescription: src?.description ?? null,
+                    entryId: String(entry.id),
+                    entryDescription: entry.description ?? null,
+                    entryScope: entry.scope ?? null,
+                    topics: Array.isArray(entry.topics) ? entry.topics : null,
+                });
+            }
         }
     }
     return results;
@@ -108,8 +123,51 @@ function flattenBibliography(entryAddress: any[]): BibEntry[] {
 
 // data fetching
 
-export async function getAddresses(): Promise<AddressCard[]> {
-    const { data, error } = await supabaseAdmin
+export async function getAddresses({
+    q = "",
+    page = 1,
+    perPage = 25,
+}: {
+    q?: string;
+    page?: number;
+    perPage?: number;
+} = {}): Promise<{ addresses: AddressCard[]; total: number }> {
+    const trimmed = q.trim();
+    const from = (page - 1) * perPage;
+
+    // resolve street id matching the query parallel with count
+    const streetIdsPromise: Promise<string[]> = trimmed
+        ? Promise.resolve(
+            supabaseAdmin
+                .from("street")
+                .select("id")
+                .or(`teryt_nazwa_1.ilike.%${trimmed}%,teryt_nazwa_2.ilike.%${trimmed}%`)
+                .then(({ data }) => (data ?? []).map((r: any) => String(r.id)))
+        )
+        : Promise.resolve([]);
+
+    // build the OR filter string for ids
+    const streetIds = await streetIdsPromise;
+    const buildFilter = (): string | null => {
+        if (!trimmed) return null;
+        const parts = [
+            `name.ilike.%${trimmed}%`,
+            `description.ilike.%${trimmed}%`,
+        ];
+        if (streetIds.length > 0) {
+            parts.push(`street_id.in.(${streetIds.join(",")})`);
+        }
+        return parts.join(",");
+    };
+    const filter = buildFilter();
+
+    // count (HEAD only, no joins) + data (25 rows + street join) in parallel
+    let countQ: any = supabaseAdmin
+        .from("address")
+        .select("id", { count: "exact", head: true });
+    if (filter) countQ = countQ.or(filter);
+
+    let dataQ: any = supabaseAdmin
         .from("address")
         .select(`
             id,
@@ -120,16 +178,20 @@ export async function getAddresses(): Promise<AddressCard[]> {
             construction_end,
             longitude,
             latitude,
-            street!address_street_id_fkey ( teryt_cecha, teryt_nazwa_2, teryt_nazwa_1 ),
-            entry_address ( entry ( topics, _processing_status ) )
-        `);
+            street!address_street_id_fkey ( teryt_cecha, teryt_nazwa_2, teryt_nazwa_1 )
+        `)
+        .range(from, from + perPage - 1)
+        .order("id");
+    if (filter) dataQ = dataQ.or(filter);
+
+    const [{ count }, { data, error }] = await Promise.all([countQ, dataQ]);
 
     if (error) {
         console.error("[getAddresses] Supabase error:", error.message);
-        return [];
+        return { addresses: [], total: 0 };
     }
 
-    return (data ?? []).map((row: any) => ({
+    const addresses = (data ?? []).map((row: any) => ({
         id: String(row.id),
         addressLabel: buildAddressLabel(row),
         name: row.name ?? null,
@@ -137,8 +199,9 @@ export async function getAddresses(): Promise<AddressCard[]> {
         year: row.construction_end ? String(row.construction_end) : null,
         longitude: row.longitude ?? null,
         latitude: row.latitude ?? null,
-        tags: flattenTopics((row as any).entry_address ?? []),
     }));
+
+    return { addresses, total: count ?? 0 };
 }
 
 

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -8,95 +9,67 @@ import type { AddressCard } from "@/lib/addresses";
 
 interface ExploreClientProps {
     addresses: AddressCard[];
+    total: number;
+    currentPage: number;
+    perPage: number;
+    searchQuery: string;
 }
 
 const COLLECTIONS = ["Wszystkie typy", "Kamienica", "Kościół", "Budynek publiczny", "Pomnik", "Inne"];
 const PER_PAGE_OPTIONS = [10, 25, 50];
-const SESSION_KEY = "explore-state";
 
-type SavedState = {
-    page: number;
-    q: string;
-    type: string;
-    per: number;
-    scrollY: number;
-};
+export default function ExploreClient({
+    addresses,
+    total,
+    currentPage,
+    perPage,
+    searchQuery,
+}: ExploreClientProps) {
+    const router = useRouter();
 
-export default function ExploreClient({ addresses }: ExploreClientProps) {
+
+    const [inputValue, setInputValue] = useState(searchQuery);
     const [dropdownOpen, setDropdownOpen] = useState(false);
     const [perPageOpen, setPerPageOpen] = useState(false);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [selectedCollection, setSelectedCollection] = useState(COLLECTIONS[0]);
-    const [perPage, setPerPage] = useState(10);
-    const [page, setPage] = useState(1);
+    const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-    useEffect(() => {
-        const raw = sessionStorage.getItem(SESSION_KEY);
-        if (!raw) return;
-        sessionStorage.removeItem(SESSION_KEY);
-        try {
-            const saved: SavedState = JSON.parse(raw);
-            setPage(saved.page ?? 1);
-            setSearchQuery(saved.q ?? "");
-            setSelectedCollection(saved.type ?? COLLECTIONS[0]);
-            setPerPage(saved.per ?? 10);
-            requestAnimationFrame(() =>
-                requestAnimationFrame(() => window.scrollTo(0, saved.scrollY ?? 0))
-            );
-        } catch {
-        }
-    }, []);
+    useEffect(() => { setInputValue(searchQuery); }, [searchQuery]);
 
-    const saveState = () => {
-        const state: SavedState = {
-            page,
-            q: searchQuery,
-            type: selectedCollection,
-            per: perPage,
-            scrollY: window.scrollY,
-        };
-        sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
+    const totalPages = Math.max(1, Math.ceil(total / perPage));
+
+    const buildUrl = (params: { q?: string; page?: number; per?: number }) => {
+        const sp = new URLSearchParams();
+        const q = params.q ?? searchQuery;
+        const page = params.page ?? currentPage;
+        const per = params.per ?? perPage;
+        if (q) sp.set("q", q);
+        if (page > 1) sp.set("page", String(page));
+        if (per !== 25) sp.set("per", String(per));
+        const qs = sp.toString();
+        return qs ? `/explore?${qs}` : "/explore";
     };
-
-    const filtered = addresses.filter((doc) => {
-        const q = searchQuery.toLowerCase();
-        const matchesSearch =
-            !q ||
-            doc.addressLabel.toLowerCase().includes(q) ||
-            (doc.name ?? "").toLowerCase().includes(q) ||
-            (doc.description ?? "").toLowerCase().includes(q);
-
-        const matchesCollection =
-            selectedCollection === COLLECTIONS[0] ||
-            doc.tags.some((t) => t.toLowerCase().includes(selectedCollection.toLowerCase()));
-
-        return matchesSearch && matchesCollection;
-    });
-
-    const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
-    const currentPage = Math.min(page, totalPages);
-    const paginated = filtered.slice((currentPage - 1) * perPage, currentPage * perPage);
 
     const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        setSearchQuery(e.target.value);
-        setPage(1);
+        const q = e.target.value;
+        setInputValue(q);
+        if (debounceRef.current) clearTimeout(debounceRef.current);
+        debounceRef.current = setTimeout(() => {
+            router.replace(buildUrl({ q, page: 1 }), { scroll: false });
+        }, 400);
     };
 
-    const handleCollectionChange = (col: string) => {
-        setSelectedCollection(col);
-        setDropdownOpen(false);
-        setPage(1);
+    const handlePageChange = (page: number) => {
+        router.replace(buildUrl({ page }), { scroll: true });
     };
 
-    const handlePerPageChange = (opt: number) => {
-        setPerPage(opt);
+    const handlePerPageChange = (per: number) => {
         setPerPageOpen(false);
-        setPage(1);
+        router.replace(buildUrl({ per, page: 1 }), { scroll: false });
     };
 
     return (
         <div className="min-h-screen bg-[#f3f4f6] pt-32 pb-24 px-6 relative">
-            <div className="absolute inset-0 lofi-grain z-0 pointer-events-none opacity-50"></div>
+            <div className="absolute inset-0 lofi-grain z-0 pointer-events-none opacity-50" />
 
             <div className="max-w-4xl mx-auto relative z-10 w-full">
 
@@ -116,8 +89,8 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
                         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
                         <input
                             type="text"
-                            placeholder="Wpisz adres lub frazę"
-                            value={searchQuery}
+                            placeholder="Wpisz nazwę lub opis obiektu…"
+                            value={inputValue}
                             onChange={handleSearchChange}
                             className="w-full bg-white border border-neutral-200 rounded-full pl-12 pr-6 py-4 text-sm outline-none focus:border-[#1a1a1a] transition-colors shadow-sm text-[#1a1a1a]"
                         />
@@ -130,17 +103,16 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
                         >
                             <span className="flex items-center gap-2">
                                 <Filter className="w-4 h-4 text-neutral-400" />
-                                {selectedCollection}
+                                Wszystkie typy
                             </span>
                             <ChevronDown className={cn("w-4 h-4 text-neutral-400 transition-transform", dropdownOpen && "rotate-180")} />
                         </button>
-
                         {dropdownOpen && (
                             <div className="absolute top-full left-0 right-0 md:right-auto md:w-56 mt-2 bg-white border border-neutral-200 rounded-2xl shadow-lg overflow-hidden z-20">
                                 {COLLECTIONS.map(col => (
                                     <button
                                         key={col}
-                                        onClick={() => handleCollectionChange(col)}
+                                        onClick={() => setDropdownOpen(false)}
                                         className="w-full text-left px-6 py-3 text-sm text-[#1a1a1a] hover:bg-neutral-50 transition-colors first:pt-4 last:pb-4"
                                     >
                                         {col}
@@ -153,20 +125,18 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
 
                 {/* Document List */}
                 <div className="flex flex-col gap-6 mb-16">
-                    {paginated.length === 0 ? (
+                    {addresses.length === 0 ? (
                         <div className="text-center py-24 text-neutral-400 font-serif italic text-lg">
                             Brak wyników dla podanych kryteriów.
                         </div>
                     ) : (
-                        paginated.map((doc) => (
+                        addresses.map((doc) => (
                             <Link
                                 key={doc.id}
                                 href={`/explore/${doc.id}`}
-                                onClick={saveState}
                                 className="bg-white rounded-[2rem] p-8 shadow-sm border border-neutral-100 flex flex-col hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden"
                             >
-                                <div className="absolute inset-0 lofi-grain opacity-20 pointer-events-none z-0"></div>
-
+                                <div className="absolute inset-0 lofi-grain opacity-20 pointer-events-none z-0" />
                                 <div className="relative z-10 flex flex-col h-full">
                                     <div className="flex flex-col-reverse md:flex-row justify-between items-start gap-4 mb-4">
                                         <div className="flex flex-col">
@@ -183,24 +153,10 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
                                             </span>
                                         )}
                                     </div>
-
                                     {doc.description && (
-                                        <p className="text-sm text-neutral-500 leading-relaxed font-light mb-8 max-w-2xl line-clamp-2">
+                                        <p className="text-sm text-neutral-500 leading-relaxed font-light mb-4 max-w-2xl line-clamp-2">
                                             {doc.description}
                                         </p>
-                                    )}
-
-                                    {doc.tags.length > 0 && (
-                                        <div className="mt-auto flex flex-wrap gap-2">
-                                            {doc.tags.map(tag => (
-                                                <span
-                                                    key={tag}
-                                                    className="inline-block px-3 py-1 bg-[#1a1a1a] text-[#f3efe6] rounded-full text-[10px] tracking-widest font-bold uppercase"
-                                                >
-                                                    {tag}
-                                                </span>
-                                            ))}
-                                        </div>
                                     )}
                                 </div>
                             </Link>
@@ -212,7 +168,7 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
                 <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-t border-neutral-200 pt-8 mt-8">
 
                     <div className="flex items-center gap-3 text-sm text-neutral-400">
-                        <span>{filtered.length} wyników</span>
+                        <span>{total.toLocaleString("pl")} wyników</span>
                         <span>·</span>
                         <div className="relative">
                             <button
@@ -240,7 +196,7 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
 
                     <div className="flex items-center gap-4">
                         <button
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
                             disabled={currentPage === 1}
                             className="flex items-center justify-center w-10 h-10 rounded-full border border-neutral-300 text-neutral-400 hover:border-[#1a1a1a] hover:text-[#1a1a1a] transition-colors disabled:opacity-30 disabled:pointer-events-none"
                         >
@@ -256,7 +212,7 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
                                             <span className="text-neutral-400 text-xs">…</span>
                                         )}
                                         <button
-                                            onClick={() => setPage(p)}
+                                            onClick={() => handlePageChange(p)}
                                             className={cn(
                                                 "w-8 h-8 flex items-center justify-center rounded-full font-medium transition-colors",
                                                 currentPage === p
@@ -271,15 +227,15 @@ export default function ExploreClient({ addresses }: ExploreClientProps) {
                         </div>
 
                         <button
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
                             disabled={currentPage === totalPages}
                             className="flex items-center justify-center w-10 h-10 rounded-full border border-neutral-300 text-[#1a1a1a] hover:bg-[#1a1a1a] hover:text-white hover:border-[#1a1a1a] transition-colors disabled:opacity-30 disabled:pointer-events-none"
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
                     </div>
-                </div>
 
+                </div>
             </div>
         </div>
     );
