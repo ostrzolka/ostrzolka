@@ -114,22 +114,31 @@ export default async function DocumentDetail({ params }: { params: Promise<{ id:
                     <div className="flex flex-col gap-4">
                         {address.bibliography.length > 0 ? (
                             address.bibliography.map((bib) => {
-                                const sourceLabel = [bib.title, bib.authors, bib.year, bib.publisher]
+                                const sourceLine = [bib.title, bib.authors, bib.year]
                                     .filter(Boolean)
                                     .join(", ");
-                                const entryDetail = bib.entryDescription || bib.entryScope || null;
 
                                 return (
                                     <div
                                         key={`${bib.sourceId}-${bib.entryId}`}
-                                        className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-baseline gap-2 pb-4 border-b border-neutral-100 last:border-0 last:pb-0"
+                                        className="flex flex-col gap-1 pb-4 border-b border-neutral-100 last:border-0 last:pb-0"
                                     >
-                                        <span className="text-sm font-medium text-[#1a1a1a] flex-1">
-                                            {sourceLabel || "Nieznane źródło"}
+                                        {/* Primary: entry description */}
+                                        <span className="text-sm font-medium text-[#1a1a1a]">
+                                            {bib.entryDescription}
                                         </span>
-                                        {entryDetail && (
-                                            <span className="text-xs text-neutral-500 sm:text-right font-light italic max-w-xs">
-                                                {entryDetail}
+
+                                        {/* Secondary: source citation */}
+                                        {sourceLine && (
+                                            <span className="text-xs text-neutral-400 font-light italic">
+                                                {sourceLine}
+                                            </span>
+                                        )}
+
+                                        {/* Tertiary: who entered the data */}
+                                        {bib.entryCreator && (
+                                            <span className="text-xs text-neutral-400 font-light">
+                                                Dodane przez: {bib.entryCreator}
                                             </span>
                                         )}
                                     </div>

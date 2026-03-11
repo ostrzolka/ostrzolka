@@ -22,6 +22,7 @@ export interface BibEntry {
     entryId: string;
     entryDescription: string | null;
     entryScope: string | null;
+    entryCreator: string | null;
     topics: string[] | null;
 }
 
@@ -87,6 +88,9 @@ function flattenBibliography(entryAddress: any[]): BibEntry[] {
 
         const sources: any[] = entry.entry_source ?? [];
 
+        const desc = entry.description?.trim() || null;
+        if (!desc) continue;
+
         if (sources.length === 0) {
             results.push({
                 sourceId: "",
@@ -96,8 +100,9 @@ function flattenBibliography(entryAddress: any[]): BibEntry[] {
                 publisher: null,
                 sourceDescription: null,
                 entryId: String(entry.id),
-                entryDescription: entry.description ?? null,
-                entryScope: entry.scope ?? null,
+                entryDescription: desc,
+                entryScope: null,
+                entryCreator: entry.creator ?? null,
                 topics: Array.isArray(entry.topics) ? entry.topics : null,
             });
         } else {
@@ -111,8 +116,9 @@ function flattenBibliography(entryAddress: any[]): BibEntry[] {
                     publisher: src?.publisher ?? null,
                     sourceDescription: src?.description ?? null,
                     entryId: String(entry.id),
-                    entryDescription: entry.description ?? null,
-                    entryScope: entry.scope ?? null,
+                    entryDescription: desc,
+                    entryScope: null,
+                    entryCreator: entry.creator ?? null,
                     topics: Array.isArray(entry.topics) ? entry.topics : null,
                 });
             }
@@ -135,26 +141,48 @@ export async function getAddresses({
     const trimmed = q.trim();
     const from = (page - 1) * perPage;
 
-    // resolve street id matching the query parallel with count
+    const trailingMatch = trimmed.match(/^(.+?)\s+(\d+[a-zA-Z]?)\s*$/);
+    const streetTerm = trailingMatch ? trailingMatch[1] : trimmed;   // "wojska polskiego"
+    const houseToken = trailingMatch ? trailingMatch[2] : null;       // "65" or "12a"
+    const houseNumber = houseToken ? parseInt(houseToken) : null;
+    const houseDetail = houseToken?.replace(/\d+/, "") || null;       // "a" from "12a"
+
     const streetIdsPromise: Promise<string[]> = trimmed
         ? Promise.resolve(
             supabaseAdmin
                 .from("street")
                 .select("id")
-                .or(`teryt_nazwa_1.ilike.%${trimmed}%,teryt_nazwa_2.ilike.%${trimmed}%`)
+                .or(`teryt_nazwa_1.ilike.%${streetTerm}%,teryt_nazwa_2.ilike.%${streetTerm}%`)
                 .then(({ data }) => (data ?? []).map((r: any) => String(r.id)))
         )
         : Promise.resolve([]);
 
     // build the OR filter string for ids
     const streetIds = await streetIdsPromise;
+
+    // street+number detected, find exact address ids (street_id + house_number)
+    let exactAddressIds: string[] = [];
+    if (streetIds.length > 0 && houseNumber !== null) {
+        let exactQ: any = supabaseAdmin
+            .from("address")
+            .select("id")
+            .in("street_id", streetIds)
+            .eq("house_number", houseNumber);
+        if (houseDetail) exactQ = exactQ.ilike("house_number_detail", `%${houseDetail}%`);
+        const { data: exactData } = await exactQ;
+        exactAddressIds = (exactData ?? []).map((r: any) => String(r.id));
+    }
     const buildFilter = (): string | null => {
         if (!trimmed) return null;
         const parts = [
             `name.ilike.%${trimmed}%`,
             `description.ilike.%${trimmed}%`,
         ];
-        if (streetIds.length > 0) {
+        // Exact address id (street+number match) take priority via OR
+        if (exactAddressIds.length > 0) {
+            parts.push(`id.in.(${exactAddressIds.join(",")})`);
+        } else if (streetIds.length > 0 && houseNumber === null) {
+            // plain street search (no number): include all addresses on those streets
             parts.push(`street_id.in.(${streetIds.join(",")})`);
         }
         return parts.join(",");
@@ -222,7 +250,7 @@ export async function getAddressById(id: string): Promise<AddressDetail | null> 
             street!address_street_id_fkey ( teryt_cecha, teryt_nazwa_2, teryt_nazwa_1 ),
             entry_address (
                 entry (
-                    id, description, topics, scope, _processing_status,
+                    id, description, topics, scope, _processing_status, creator,
                     entry_source (
                         source ( id, title, authors, publisher, year, description )
                     )
