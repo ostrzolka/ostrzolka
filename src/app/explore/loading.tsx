@@ -1,12 +1,8 @@
-
+import HeroRevealCurtain from "@/components/HeroRevealCurtain";
 export default function ExploreLoading() {
     return (
         <div className="relative">
-            {/* Reveal curtain: slides down off-screen, matched to explore bg color */}
-            <div
-                className="fixed inset-0 z-[9999] animate-curtain-down pointer-events-none"
-                style={{ background: "#1a1a1a" }}
-            />
+            <HeroRevealCurtain />
 
             <div className="min-h-screen bg-[#f3f4f6] pt-32 pb-24 px-6 relative">
                 <div className="absolute inset-0 lofi-grain z-0 pointer-events-none opacity-50" />

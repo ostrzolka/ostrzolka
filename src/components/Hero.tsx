@@ -21,7 +21,10 @@ export default function Hero() {
                 y: "0%",
                 duration: 0.7,
                 ease: "power3.inOut",
-                onComplete: () => router.push("/explore"),
+                onComplete: () => {
+                    sessionStorage.setItem("hero-transition", "1");
+                    router.push("/explore");
+                },
             }
         );
     };
