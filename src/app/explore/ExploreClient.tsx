@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { Search, ChevronDown, ChevronLeft, ChevronRight, Filter } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import type { AddressCard } from "@/lib/addresses";
+import type { EntityCard } from "@/lib/entities";
 
 interface ExploreClientProps {
-    addresses: AddressCard[];
+    entities: EntityCard[];
     total: number;
     currentPage: number;
     perPage: number;
@@ -19,7 +19,7 @@ const COLLECTIONS = ["Wszystkie typy", "Kamienica", "Kościół", "Budynek publi
 const PER_PAGE_OPTIONS = [10, 25, 50];
 
 export default function ExploreClient({
-    addresses,
+    entities,
     total,
     currentPage,
     perPage,
@@ -125,42 +125,57 @@ export default function ExploreClient({
 
                 {/* Document List */}
                 <div className="flex flex-col gap-6 mb-16">
-                    {addresses.length === 0 ? (
+                    {entities.length === 0 ? (
                         <div className="text-center py-24 text-neutral-400 font-serif italic text-lg">
                             Brak wyników dla podanych kryteriów.
                         </div>
                     ) : (
-                        addresses.map((doc) => (
-                            <Link
-                                key={doc.id}
-                                href={`/explore/${doc.id}`}
-                                className="bg-white rounded-[2rem] p-8 shadow-sm border border-neutral-100 flex flex-col hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 lofi-grain opacity-20 pointer-events-none z-0" />
-                                <div className="relative z-10 flex flex-col h-full">
-                                    <div className="flex flex-col-reverse md:flex-row justify-between items-start gap-4 mb-4">
-                                        <div className="flex flex-col">
-                                            <h2 className="font-serif text-2xl text-[#1a1a1a] tracking-tight group-hover:text-neutral-600 transition-colors">
-                                                {doc.addressLabel}
-                                            </h2>
-                                            {doc.name && (
-                                                <span className="text-sm font-medium text-neutral-400 mt-1">{doc.name}</span>
+                        entities.map((doc) => {
+                            let href = `/explore/${doc.id}`; // default: address
+                            if (doc.entityType === "person") href = `/explore/person/${doc.id}`;
+                            else if (doc.entityType === "organisation") href = `/explore/organisation/${doc.id}`;
+
+                            let badgeLabel = "Adres";
+                            if (doc.entityType === "person") badgeLabel = "Osoba";
+                            else if (doc.entityType === "organisation") badgeLabel = "Organizacja";
+
+                            return (
+                                <Link
+                                    key={doc.id}
+                                    href={href}
+                                    className="bg-white rounded-[2rem] p-8 shadow-sm border border-neutral-100 flex flex-col hover:shadow-lg transition-all duration-300 hover:-translate-y-1 group relative overflow-hidden"
+                                >
+                                    <div className="absolute inset-0 lofi-grain opacity-20 pointer-events-none z-0" />
+                                    <div className="relative z-10 flex flex-col h-full">
+                                        <div className="flex flex-col-reverse md:flex-row justify-between items-start gap-4 mb-4">
+                                            <div className="flex flex-col gap-2">
+                                                <div className="flex items-center gap-3">
+                                                    <span className="inline-block px-2 py-0.5 border border-neutral-200 text-neutral-500 rounded-full text-[10px] tracking-widest font-bold uppercase shrink-0">
+                                                        {badgeLabel}
+                                                    </span>
+                                                </div>
+                                                <h2 className="font-serif text-2xl text-[#1a1a1a] tracking-tight group-hover:text-neutral-600 transition-colors">
+                                                    {doc.label}
+                                                </h2>
+                                                {doc.subtitle && (
+                                                    <span className="text-sm font-medium text-neutral-400 mt-1">{doc.subtitle}</span>
+                                                )}
+                                            </div>
+                                            {doc.year && (
+                                                <span className="shrink-0 text-xs font-medium text-neutral-400 border border-neutral-200 rounded-full px-3 py-1 mt-1 md:mt-0">
+                                                    {doc.year}
+                                                </span>
                                             )}
                                         </div>
-                                        {doc.year && (
-                                            <span className="shrink-0 text-xs font-medium text-neutral-400 border border-neutral-200 rounded-full px-3 py-1">
-                                                {doc.year}
-                                            </span>
+                                        {doc.description && (
+                                            <p className="text-sm text-neutral-500 leading-relaxed font-light mb-4 max-w-2xl line-clamp-2">
+                                                {doc.description}
+                                            </p>
                                         )}
                                     </div>
-                                    {doc.description && (
-                                        <p className="text-sm text-neutral-500 leading-relaxed font-light mb-4 max-w-2xl line-clamp-2">
-                                            {doc.description}
-                                        </p>
-                                    )}
-                                </div>
-                            </Link>
-                        ))
+                                </Link>
+                            );
+                        })
                     )}
                 </div>
 

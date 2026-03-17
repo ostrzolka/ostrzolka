@@ -80,7 +80,7 @@ function flattenTopics(entryAddress: any[]): string[] {
  * processes entries with _processing_status === 'processed'
  */
 
-function flattenBibliography(entryAddress: any[]): BibEntry[] {
+export function flattenBibliography(entryAddress: any[]): BibEntry[] {
     const results: BibEntry[] = [];
     for (const ea of entryAddress ?? []) {
         const entry = ea.entry;
