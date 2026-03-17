@@ -79,4 +79,30 @@
   .animate-slide {
     animation: slide 30s linear infinite;
   }
+
+  @keyframes skeleton-shimmer {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
+  }
+
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      #e5e5e5 25%,
+      #f0f0f0 50%,
+      #e5e5e5 75%
+    );
+    background-size: 400% 100%;
+    animation: skeleton-shimmer 1.8s ease-in-out infinite;
+    border-radius: 0.5rem;
+  }
+
+  @keyframes curtain-down {
+    from { transform: translateY(0%); }
+    to   { transform: translateY(100%); }
+  }
+
+  .animate-curtain-down {
+    animation: curtain-down 0.75s cubic-bezier(0.76, 0, 0.24, 1) both;
+  }
 }
