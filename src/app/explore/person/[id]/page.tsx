@@ -1,6 +1,7 @@
 import { getPersonById } from "@/lib/entities";
 import { notFound } from "next/navigation";
 import BackButton from "@/components/BackButton";
+import ReportErrorModal from "@/components/ReportErrorModal";
 import { User } from "lucide-react";
 
 export default async function PersonDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -19,8 +20,11 @@ export default async function PersonDetail({ params }: { params: Promise<{ id: s
 
             <div className="max-w-5xl mx-auto relative z-10 w-full bg-white rounded-[2rem] p-8 md:p-12 shadow-sm border border-neutral-100 flex flex-col mt-8">
 
-                {/* Back Button */}
-                <BackButton className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#1a1a1a] transition-colors self-start mb-8 font-medium" />
+                {/* Top Actions */}
+                <div className="flex justify-between items-start w-full mb-8">
+                    <BackButton className="inline-flex items-center gap-2 text-sm text-neutral-500 hover:text-[#1a1a1a] transition-colors font-medium" />
+                    <ReportErrorModal objectId={id} objectType="person" objectName={fullName} />
+                </div>
 
                 {/* Top Section: Split Layout */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-start mb-16">
